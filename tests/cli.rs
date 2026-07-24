@@ -233,7 +233,37 @@ fn profiles_lists_defined_profiles() {
     let f = fixture();
     let state = tempfile::tempdir().unwrap();
     let out = run(f.path(), state.path(), &["profiles"]);
-    assert!(out.contains("k8s:"));
+    // Each profile is a header line followed by its specs as a tree.
+    assert!(out.contains("k8s"));
+    assert!(out.contains("├── ") || out.contains("└── "));
+    // Specs render as tree leaves.
+    assert!(out.contains("dev/kind"));
+    // No profile resolves (no persisted, no committed default) -> no tags.
+    assert!(!out.contains("active"));
+    assert!(!out.contains("default"));
+}
+
+#[test]
+fn profiles_tags_persisted_active_over_committed_default() {
+    let f = fixture_with_config(CONFIG_WITH_DEFAULT);
+    let state = tempfile::tempdir().unwrap();
+    run(f.path(), state.path(), &["use", "k8s", "--save"]);
+
+    let out = run(f.path(), state.path(), &["profiles"]);
+    // Persisted `k8s` is active; committed `git` is the overridden default.
+    assert!(out.contains("k8s  ● active"));
+    assert!(out.contains("git  ○ default"));
+}
+
+#[test]
+fn profiles_tags_committed_default_as_active_when_none_persisted() {
+    let f = fixture_with_config(CONFIG_WITH_DEFAULT);
+    let state = tempfile::tempdir().unwrap();
+
+    let out = run(f.path(), state.path(), &["profiles"]);
+    // With nothing persisted, the committed default is what new shells load.
+    assert!(out.contains("git  ● active"));
+    assert!(!out.contains("○ default"));
 }
 
 // --- Gap 1: committed `default:` profile precedence ---
@@ -409,10 +439,7 @@ fn root_falls_back_to_home_local_shmod() {
         ok,
         "profiles should succeed via ~/.local/shmod fallback: {stderr}"
     );
-    assert!(
-        stdout.contains("k8s:"),
-        "fallback config not used: {stdout}"
-    );
+    assert!(stdout.contains("k8s"), "fallback config not used: {stdout}");
 }
 
 #[test]
@@ -437,7 +464,7 @@ fn root_resolves_from_xdg_config_home() {
 
     assert!(ok, "profiles should succeed via XDG_CONFIG_HOME: {stderr}");
     assert!(
-        stdout.contains("k8s:"),
+        stdout.contains("k8s"),
         "XDG_CONFIG_HOME config not used: {stdout}"
     );
 }
@@ -466,7 +493,7 @@ fn shmod_root_env_overrides_xdg_config_home() {
 
     assert!(ok, "profiles should succeed via SHMOD_ROOT: {stderr}");
     assert!(
-        stdout.contains("k8s:"),
+        stdout.contains("k8s"),
         "SHMOD_ROOT did not take precedence: {stdout}"
     );
 }
@@ -486,7 +513,7 @@ fn explicit_root_flag_overrides_shmod_root_env() {
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
-        stdout.contains("k8s:"),
+        stdout.contains("k8s"),
         "--root did not take precedence: {stdout}"
     );
 }

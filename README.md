@@ -57,7 +57,7 @@ committed `default:` from `shmod.yaml` if none is saved.
 | `shmod source <path> --force` | Source regardless of extension or `.off` marker. |
 | `shmod reload` | Re-source the startup list + active profile into the current shell. |
 | `shmod reset [--save]` | Clear the active profile; `--save` clears the persisted default. |
-| `shmod profiles` | List profiles defined in `shmod.yaml`. |
+| `shmod profiles` | List profiles from `shmod.yaml`, each as a module tree; the resolved profile is tagged `● active`, an overridden committed default `○ default`. |
 | `shmod active` | Show the active default profile (persisted, or committed `default:`). |
 | `shmod list [--mode all\|enabled\|disabled]` | Show discovered modules as a tree, tagged `[on]`/`[off]`. |
 | `shmod check <paths>` | Report declared `@dep` commands missing from `PATH`. |

@@ -66,13 +66,7 @@ pub fn run(args: Cli) -> Result<()> {
 
         Command::Profiles => {
             let config = Config::load(&root)?;
-            if config.profiles.is_empty() {
-                println!("(no profiles defined)");
-            } else {
-                for (name, specs) in &config.profiles {
-                    println!("{name}: {}", specs.join(", "));
-                }
-            }
+            profiles(&config)?;
         }
 
         Command::Active => {
@@ -91,6 +85,48 @@ pub fn run(args: Cli) -> Result<()> {
         Command::Check { paths } => check(&root, &paths)?,
     }
 
+    Ok(())
+}
+
+/// Render defined profiles, one block per profile, with each profile's module
+/// specs listed as a tree. The resolved active profile (persisted default wins
+/// over the committed `default:`) is tagged so users can see it at a glance.
+fn profiles(config: &Config) -> Result<()> {
+    if config.profiles.is_empty() {
+        println!("(no profiles defined)");
+        return Ok(());
+    }
+
+    let persisted = state::read()?;
+    // Persisted default wins over the committed `default:`; whichever resolves
+    // is the profile new shells load.
+    let active = persisted.as_deref().or(config.default.as_deref());
+
+    let last = config.profiles.len().saturating_sub(1);
+    for (i, (name, specs)) in config.profiles.iter().enumerate() {
+        let n = name.as_str();
+        let tag = if active == Some(n) {
+            "  ● active"
+        } else if config.default.as_deref() == Some(n) {
+            // Committed default that a persisted default has overridden.
+            "  ○ default"
+        } else {
+            ""
+        };
+        println!("{name}{tag}");
+        let spec_last = specs.len().saturating_sub(1);
+        for (j, spec) in specs.iter().enumerate() {
+            let connector = if j == spec_last {
+                "└── "
+            } else {
+                "├── "
+            };
+            println!("{connector}{spec}");
+        }
+        if i != last {
+            println!();
+        }
+    }
     Ok(())
 }
 
