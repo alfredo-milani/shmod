@@ -1,0 +1,19 @@
+settings:
+  extensions: ["sh"]
+  off_extension: "off"
+  # Ordered list of paths (files or dirs) sourced at startup, before any
+  # profile. Order = list position; dirs expand via discovery.
+  startup:
+    - ".core/environment.sh"
+    - ".core/alias.sh"
+    - ".core/function.sh"
+    - "preload"
+
+profiles:
+  k8s: ["dev/kubernetes", "dev/helm", "dev/kind"]
+  infra: ["dev/terraform", "dev/openssl"]
+  git: ["base/git"]
+  # Context profiles: a shared base/ module + a contexts/ overlay. The overlay
+  # is listed last so its exports/aliases win over the shared base.
+  work: ["base/git", "contexts/work"]
+  personal: ["base/git", "contexts/personal"]

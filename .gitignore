@@ -1,0 +1,63 @@
+# Rust build artifacts
+/target
+**/*.rs.bk
+*.pdb
+
+# Cargo
+# Cargo.lock is tracked for binary crates (this crate ships a binary).
+
+# Code coverage
+*.profraw
+*.gcda
+*.gcno
+tarpaulin-report.html
+cobertura.xml
+/coverage
+
+# Benchmarks / profiling
+/criterion
+flamegraph.svg
+perf.data
+perf.data.old
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editors / IDEs
+*.swp
+*.swo
+*.swn
+*.bak
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+.zed/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs / temp
+*.log
+*.tmp
+tmp/
+
+# Project level
+TODO.md
