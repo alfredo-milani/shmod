@@ -35,7 +35,7 @@ Thin `main.rs` → `lib.rs::run()` dispatches on the parsed `Command`. Each modu
 
 ### Key behaviors to preserve
 
-- **Profile resolution precedence**: persisted default (`use --save`) wins over the committed `default:` in `shmod.yaml`. `init` and `reload` share this via `state::read()?.or_else(|| config.default.clone())`. `reset --save` clears the persisted default, falling back to the committed one.
+- **Profile resolution precedence**: persisted default (`use --save`) wins over the committed `default:` in `shmod.yaml`. `init` and `reload` share this via `state::read()?.or_else(|| config.default.clone())`. `init --profile <name>` overrides both for that shell only (via `profile.or(state::read()?).or_else(...)`) and does not persist. `reset --save` clears the persisted default, falling back to the committed one.
 - **Startup vs. profile**: `startup` paths load in every shell in list order; profiles load on demand. `list` deliberately excludes startup paths (they aren't togglable modules).
 - **`list` tree rendering** (`lib.rs::TreeNode`): modules render as a `├──`/`└──` tree, each file tagged `[on]`/`[off]`. In the default `--mode all` view, a directory whose entire subtree is disabled collapses to a single `[off]` node instead of expanding — this collapse is intentionally skipped for `--mode disabled`, which wants every disabled file listed.
 - **`profiles` rendering** (`lib.rs::profiles`): each profile prints a header line then its module specs as a `├──`/`└──` tree. The resolved profile (same precedence as above) is tagged `● active`; a committed `default:` that a persisted default has overridden is tagged `○ default`.

@@ -24,6 +24,9 @@ pub enum Command {
         /// Target shell (only bash supported today).
         #[arg(value_enum, default_value_t = Shell::Bash)]
         shell: Shell,
+        /// Load this profile for this shell instead of the persisted/committed default.
+        #[arg(long)]
+        profile: Option<String>,
     },
     /// Emit source lines for a profile's modules; --save persists it as default.
     Use {

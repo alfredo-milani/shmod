@@ -305,6 +305,34 @@ fn persisted_default_overrides_committed_default() {
 }
 
 #[test]
+fn init_profile_flag_loads_that_profile() {
+    let f = fixture();
+    let state = tempfile::tempdir().unwrap();
+    let out = run(f.path(), state.path(), &["init", "bash", "--profile", "k8s"]);
+
+    // startup still loads, plus the requested profile's modules.
+    assert!(out.contains(".core/environment.sh"));
+    assert!(out.contains("dev/kind/kind.sh"));
+    assert!(out.contains("dev/helm/helm.sh"));
+}
+
+#[test]
+fn init_profile_flag_overrides_persisted_and_committed_default() {
+    let f = fixture_with_config(CONFIG_WITH_DEFAULT);
+    let state = tempfile::tempdir().unwrap();
+    // Persist a user default that the flag must override.
+    run(f.path(), state.path(), &["use", "git", "--save"]);
+
+    let out = run(f.path(), state.path(), &["init", "bash", "--profile", "k8s"]);
+    assert!(out.contains("dev/kind/kind.sh"));
+    // Neither the persisted nor committed default applies once --profile is given.
+    assert!(!out.contains("dev/git/git.sh"));
+    // --profile does not persist: the saved default is unchanged.
+    let active = run(f.path(), state.path(), &["active"]);
+    assert_eq!(active.trim(), "git");
+}
+
+#[test]
 fn reset_save_falls_back_to_committed_default() {
     let f = fixture_with_config(CONFIG_WITH_DEFAULT);
     let state = tempfile::tempdir().unwrap();

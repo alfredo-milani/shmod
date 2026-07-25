@@ -18,11 +18,13 @@ pub fn run(args: Cli) -> Result<()> {
     let root = root::resolve(args.root.clone())?;
 
     match args.command {
-        Command::Init { .. } => {
+        Command::Init { profile, .. } => {
             let config = Config::load(&root)?;
-            // Persisted user default wins; otherwise fall back to the
-            // committed default profile from shmod.yaml.
-            let active = state::read()?.or_else(|| config.default.clone());
+            // Explicit --profile wins; then persisted user default; otherwise
+            // fall back to the committed default profile from shmod.yaml.
+            let active = profile
+                .or(state::read()?)
+                .or_else(|| config.default.clone());
             print!("{}", emit::init_bash(&root, &config, active.as_deref()));
         }
 

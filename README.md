@@ -46,11 +46,16 @@ This exports `SHMOD_ROOT`, installs the `shmod()` shim, and sources the startup
 list plus the active default profile — the user's last `use --save`, or the
 committed `default:` from `shmod.yaml` if none is saved.
 
+Pass `--profile <name>` to load a specific profile for this shell instead of the
+default (e.g. `eval "$(command shmod init bash --profile k8s)"`). It overrides
+both the persisted and committed defaults and does not persist.
+
 ## Commands
 
 | Command | Description |
 | --- | --- |
 | `shmod init bash` | Emit shell integration (shim + startup sourcing). |
+| `shmod init bash --profile <name>` | Same, but load `<name>` for this shell instead of the default (overrides persisted/committed; not persisted). |
 | `shmod use <profile>` | Source a profile's modules into the current shell. |
 | `shmod use <profile> --save` | Same, and persist it as the default for new shells. |
 | `shmod source <paths>` | Source specific files/dirs (`:`-separated allowed). |
