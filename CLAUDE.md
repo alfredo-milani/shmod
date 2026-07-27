@@ -26,8 +26,8 @@ Integration tests build the binary and invoke it as a subprocess against a temp 
 Thin `main.rs` → `lib.rs::run()` dispatches on the parsed `Command`. Each module owns one concern:
 
 - **`cli.rs`** — clap `Cli`/`Command` definitions. `split_paths` handles the legacy `a:b:c` colon-separated multi-path syntax.
-- **`root.rs`** — resolves the module tree root in precedence order: `--root` flag → `SHMOD_ROOT` env → XDG config dir (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`).
-- **`config.rs`** — deserializes `shmod.yaml` (`serde_yaml_ng`). A missing file yields defaults with no profiles, so a bare tree still works. Holds `settings` (extensions, off_extension, startup list) and `profiles` (name → list of paths).
+- **`root.rs`** — resolves the module tree root in precedence order: `--root` flag → `SHMOD_ROOT` env → XDG config dir (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`). Also holds `expand_path`, used only for `settings.modules_root`: `~`/`~/...` expands against `$HOME`, an absolute path passes through, anything else joins against the config root.
+- **`config.rs`** — deserializes `shmod.yaml` (`serde_yaml_ng`). A missing file yields defaults with no profiles, so a bare tree still works. Holds `settings` (extensions, off_extension, startup list, optional `modules_root`) and `profiles` (name → list of paths). `Config::modules_root(root)` resolves where module paths actually live: `settings.modules_root` (expanded via `root::expand_path` for `~`/absolute/relative-to-root) if set, else `root` itself.
 - **`discover.rs`** — recursive module-file collection via `walkdir`. Skips hidden entries (except the target root itself), classifies each file as enabled (extension in `settings.extensions`) or disabled (ends in `off_extension`, default `.off`). Sorted for stable output.
 - **`emit.rs`** — turns resolved paths into `source` lines and builds the `init bash` output (SHMOD_ROOT export + shim + startup sourcing). **`shell_quote` is security-critical**: it single-quotes every emitted path so metacharacters can't execute when the shim evals the output. The `SHIM` const lists exactly which subcommands get wrapped in `eval` (`init|use|source|reload|reset`) vs. run directly.
 - **`state.rs`** — reads/writes the persisted active profile at `${XDG_STATE_HOME:-$HOME/.local/state}/shmod/active-profile`. This is program-managed **state**, deliberately kept separate from user-authored **config** (`shmod.yaml`).
@@ -41,6 +41,7 @@ Thin `main.rs` → `lib.rs::run()` dispatches on the parsed `Command`. Each modu
 - **`profiles` rendering** (`lib.rs::profiles`): each profile prints a header line then its module specs as a `├──`/`└──` tree. The resolved profile (same precedence as above) is tagged `● active`; a committed `default:` that a persisted default has overridden is tagged `○ default`.
 - **Directories vs. files**: every "path spec" (in `startup` or a profile) may be a file or a dir; dirs expand recursively via discovery.
 - **`--force`** (`source --force`) bypasses extension and `.off` filtering to source any regular file.
+- **`modules_root` vs. the config root**: `SHMOD_ROOT` (exported by `init bash`) always reflects the *config* root (where `shmod.yaml` is resolved from); `startup`/profile module paths resolve from `modules_root` instead when `settings.modules_root` is set. `lib.rs::run` computes `let modules_root = config.modules_root(&root)` once per command and threads it into `emit`/`discover` calls — `root` itself must never be used for path resolution once `modules_root` exists at a call site.
 
 ## Context
 

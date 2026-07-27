@@ -20,18 +20,23 @@ pub fn run(args: Cli) -> Result<()> {
     match args.command {
         Command::Init { profile, .. } => {
             let config = Config::load(&root)?;
+            let modules_root = config.modules_root(&root);
             // Explicit --profile wins; then persisted user default; otherwise
             // fall back to the committed default profile from shmod.yaml.
             let active = profile
                 .or(state::read()?)
                 .or_else(|| config.default.clone());
-            print!("{}", emit::init_bash(&root, &config, active.as_deref()));
+            print!(
+                "{}",
+                emit::init_bash(&root, &modules_root, &config, active.as_deref())
+            );
         }
 
         Command::Use { profile, save } => {
             let config = Config::load(&root)?;
+            let modules_root = config.modules_root(&root);
             let specs = config.profile(&profile)?.to_vec();
-            let files = emit::resolve_specs(&root, &config, &specs);
+            let files = emit::resolve_specs(&modules_root, &config, &specs);
             print!("{}", emit::source_lines(&files));
             if save {
                 state::write(&profile)?;
@@ -41,20 +46,25 @@ pub fn run(args: Cli) -> Result<()> {
 
         Command::Source { paths, force } => {
             let config = Config::load(&root)?;
+            let modules_root = config.modules_root(&root);
             let specs = cli::split_paths(&paths);
             let files = if force {
-                emit::resolve_specs_force(&root, &specs)
+                emit::resolve_specs_force(&modules_root, &specs)
             } else {
-                emit::resolve_specs(&root, &config, &specs)
+                emit::resolve_specs(&modules_root, &config, &specs)
             };
             print!("{}", emit::source_lines(&files));
         }
 
         Command::Reload => {
             let config = Config::load(&root)?;
+            let modules_root = config.modules_root(&root);
             // Same resolution as init: persisted user default wins, else committed default.
             let active = state::read()?.or_else(|| config.default.clone());
-            print!("{}", emit::startup_lines(&root, &config, active.as_deref()));
+            print!(
+                "{}",
+                emit::startup_lines(&modules_root, &config, active.as_deref())
+            );
         }
 
         Command::Reset { save } => {
@@ -134,14 +144,15 @@ fn profiles(config: &Config) -> Result<()> {
 
 fn list(root: &Path, mode: ListMode) -> Result<()> {
     let config = Config::load(root)?;
+    let modules_root = config.modules_root(root);
     let startup: Vec<PathBuf> = config
         .settings
         .startup
         .iter()
-        .map(|c| root.join(c))
+        .map(|c| modules_root.join(c))
         .collect();
     let mut tree = TreeNode::default();
-    for m in discover::collect(root, &config.settings) {
+    for m in discover::collect(&modules_root, &config.settings) {
         // Skip startup paths — they always load and aren't togglable modules.
         if startup
             .iter()
@@ -157,7 +168,7 @@ fn list(root: &Path, mode: ListMode) -> Result<()> {
         if !show {
             continue;
         }
-        let rel = m.path.strip_prefix(root).unwrap_or(&m.path);
+        let rel = m.path.strip_prefix(&modules_root).unwrap_or(&m.path);
         let components: Vec<String> = rel
             .components()
             .map(|c| c.as_os_str().to_string_lossy().into_owned())
@@ -234,10 +245,11 @@ impl TreeNode {
 
 fn check(root: &Path, paths: &[String]) -> Result<()> {
     let config = Config::load(root)?;
+    let modules_root = config.modules_root(root);
     let specs = cli::split_paths(paths);
     let mut any_missing = false;
     for spec in specs {
-        let target = root.join(&spec);
+        let target = modules_root.join(&spec);
         // Check both enabled and disabled files (mirror old behavior).
         for m in discover::collect(&target, &config.settings) {
             let declared = deps::declared(&m.path)?;
@@ -245,7 +257,7 @@ fn check(root: &Path, paths: &[String]) -> Result<()> {
             let missing = deps::missing(declared_refs);
             if !missing.is_empty() {
                 any_missing = true;
-                let rel = m.path.strip_prefix(root).unwrap_or(&m.path);
+                let rel = m.path.strip_prefix(&modules_root).unwrap_or(&m.path);
                 println!("{} requires: {}", rel.to_string_lossy(), missing.join(" "));
             }
         }

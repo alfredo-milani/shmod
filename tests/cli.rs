@@ -308,7 +308,11 @@ fn persisted_default_overrides_committed_default() {
 fn init_profile_flag_loads_that_profile() {
     let f = fixture();
     let state = tempfile::tempdir().unwrap();
-    let out = run(f.path(), state.path(), &["init", "bash", "--profile", "k8s"]);
+    let out = run(
+        f.path(),
+        state.path(),
+        &["init", "bash", "--profile", "k8s"],
+    );
 
     // startup still loads, plus the requested profile's modules.
     assert!(out.contains(".core/environment.sh"));
@@ -323,7 +327,11 @@ fn init_profile_flag_overrides_persisted_and_committed_default() {
     // Persist a user default that the flag must override.
     run(f.path(), state.path(), &["use", "git", "--save"]);
 
-    let out = run(f.path(), state.path(), &["init", "bash", "--profile", "k8s"]);
+    let out = run(
+        f.path(),
+        state.path(),
+        &["init", "bash", "--profile", "k8s"],
+    );
     assert!(out.contains("dev/kind/kind.sh"));
     // Neither the persisted nor committed default applies once --profile is given.
     assert!(!out.contains("dev/git/git.sh"));
@@ -524,6 +532,120 @@ fn shmod_root_env_overrides_xdg_config_home() {
         stdout.contains("k8s"),
         "SHMOD_ROOT did not take precedence: {stdout}"
     );
+}
+
+// --- Gap 6: `settings.modules_root` (modules living apart from shmod.yaml) ---
+
+#[test]
+fn modules_root_relative_path_resolves_under_config_root() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    let state = tempfile::tempdir().unwrap();
+
+    // Modules live under <root>/modules, not directly under <root>.
+    write(root.join("modules/.core/environment.sh"), "export MOD=x\n");
+    write(root.join("modules/dev/git/git.sh"), "export G=1\n");
+    write(
+        root.join("shmod.yaml"),
+        "settings:\n  modules_root: \"modules\"\n  startup:\n    - \".core/environment.sh\"\nprofiles:\n  git: [\"dev/git\"]\n",
+    );
+
+    let out = run(root, state.path(), &["init", "bash"]);
+    assert!(out.contains("export SHMOD_ROOT="));
+    assert!(out.contains("modules/.core/environment.sh"));
+
+    let out = run(root, state.path(), &["use", "git"]);
+    assert!(out.contains("modules/dev/git/git.sh"));
+}
+
+#[test]
+fn modules_root_absolute_path_points_outside_config_root() {
+    let config_dir = tempfile::tempdir().unwrap();
+    let modules_dir = tempfile::tempdir().unwrap();
+    let state = tempfile::tempdir().unwrap();
+
+    write(
+        modules_dir.path().join(".core/environment.sh"),
+        "export MOD=x\n",
+    );
+    write(modules_dir.path().join("dev/git/git.sh"), "export G=1\n");
+    write(
+        config_dir.path().join("shmod.yaml"),
+        &format!(
+            "settings:\n  modules_root: \"{}\"\n  startup:\n    - \".core/environment.sh\"\nprofiles:\n  git: [\"dev/git\"]\n",
+            modules_dir.path().display()
+        ),
+    );
+
+    let out = run(config_dir.path(), state.path(), &["init", "bash"]);
+    // SHMOD_ROOT still points at the config root...
+    assert!(out.contains(&config_dir.path().to_string_lossy().into_owned()));
+    // ...but sourced modules resolve from the separate modules_root.
+    assert!(out.contains(
+        &modules_dir
+            .path()
+            .join(".core/environment.sh")
+            .to_string_lossy()
+            .into_owned()
+    ));
+
+    let out = run(config_dir.path(), state.path(), &["use", "git"]);
+    assert!(out.contains(
+        &modules_dir
+            .path()
+            .join("dev/git/git.sh")
+            .to_string_lossy()
+            .into_owned()
+    ));
+}
+
+#[test]
+fn modules_root_tilde_expands_against_home() {
+    let home = tempfile::tempdir().unwrap();
+    let config_dir = tempfile::tempdir().unwrap();
+    let state = tempfile::tempdir().unwrap();
+
+    write(
+        home.path().join("mymods/.core/environment.sh"),
+        "export MOD=x\n",
+    );
+    write(
+        config_dir.path().join("shmod.yaml"),
+        "settings:\n  modules_root: \"~/mymods\"\n  startup:\n    - \".core/environment.sh\"\n",
+    );
+
+    let mut cmd = Command::new(bin());
+    cmd.args([
+        "--root",
+        config_dir.path().to_str().unwrap(),
+        "init",
+        "bash",
+    ])
+    .env("HOME", home.path())
+    .env("XDG_STATE_HOME", state.path());
+    let out = cmd.output().unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains(
+        &home
+            .path()
+            .join("mymods/.core/environment.sh")
+            .to_string_lossy()
+            .into_owned()
+    ));
+}
+
+#[test]
+fn modules_root_unset_keeps_modules_alongside_config() {
+    // Default behavior (no modules_root) is unchanged: modules resolve from root.
+    let f = fixture();
+    let state = tempfile::tempdir().unwrap();
+    let out = run(f.path(), state.path(), &["init", "bash"]);
+    assert!(out.contains(".core/environment.sh"));
 }
 
 #[test]

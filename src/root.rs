@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
@@ -35,4 +35,25 @@ fn canonical(p: PathBuf) -> Result<PathBuf> {
 
 pub fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from)
+}
+
+/// Expand a config-supplied path: `~` or `~/...` resolves against `$HOME`,
+/// an absolute path is used as-is, and anything else is joined against
+/// `base` (the config root). Used for `settings.modules_root`.
+pub fn expand_path(raw: &str, base: &Path) -> PathBuf {
+    if let Some(rest) = raw.strip_prefix("~/") {
+        if let Some(home) = home_dir() {
+            return home.join(rest);
+        }
+    } else if raw == "~" {
+        if let Some(home) = home_dir() {
+            return home;
+        }
+    }
+    let p = PathBuf::from(raw);
+    if p.is_absolute() {
+        p
+    } else {
+        base.join(p)
+    }
 }

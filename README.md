@@ -12,6 +12,8 @@ stdout and a shell shim `eval`s them.
 
 - **Module tree** — a directory of `.sh` files grouped into subdirectories.
 - **`shmod.yaml`** — at the tree root; defines `settings` and `profiles`.
+- **`modules_root`** — optional; points module discovery at a different
+  directory than the one holding `shmod.yaml` (see below).
 - **Startup list** — paths in `settings.startup` sourced by every new shell,
   in order (files and dirs both allowed; dirs expand via discovery).
 - **Profiles** — named lists of module paths you load on demand (each path is a
@@ -94,6 +96,30 @@ profiles:
 
 This mirrors the runnable [example/](example/) tree.
 
+### Separate module tree location (`modules_root`)
+
+By default module files live alongside `shmod.yaml`: `startup` and profile
+paths are resolved relative to the tree root. Set `settings.modules_root` to
+load modules from elsewhere instead — e.g. a dotfiles repo checked out
+somewhere else, or a directory shared across machines by sync software:
+
+```yaml
+settings:
+  modules_root: "~/dotfiles/shmod"
+```
+
+`modules_root` accepts:
+
+- `~` or `~/...` — expanded against `$HOME`.
+- an absolute path — used as-is.
+- a relative path — joined against the tree root (the directory holding
+  `shmod.yaml`).
+
+`shmod.yaml` itself, `default`, and `profiles` stay where the tree root
+resolves them (`--root` → `SHMOD_ROOT` → XDG config dir); only the
+`startup`/profile module *paths* resolve under `modules_root` instead.
+`SHMOD_ROOT` still exports the config root, not `modules_root`.
+
 ### Contexts (work / personal)
 
 To drive one module tree from different environments (work laptop, personal
@@ -129,6 +155,9 @@ See [example/README.md](example/README.md).
 - **Config (`shmod.yaml`)** lives at the module tree root — yours to edit and
   version-control. Resolved as `--root` → `SHMOD_ROOT` → XDG config dir
   (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`).
+- **Modules** live alongside `shmod.yaml` by default, or wherever
+  `settings.modules_root` points if set (see
+  [Separate module tree location](#separate-module-tree-location-modules_root)).
 - **State (active profile)** is written by the program on `use --save` and
   stored at `${XDG_STATE_HOME:-$HOME/.local/state}/shmod/active-profile`. It's a
   runtime selection, not configuration, so it stays out of your config and can

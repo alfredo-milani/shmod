@@ -33,12 +33,13 @@ pub fn source_lines(files: &[PathBuf]) -> String {
     out
 }
 
-/// Resolve a list of module path specs (relative to root) into sourceable files,
-/// expanding directories recursively and filtering by extension / `.off`.
-pub fn resolve_specs(root: &Path, config: &Config, specs: &[String]) -> Vec<PathBuf> {
+/// Resolve a list of module path specs (relative to `modules_root`) into
+/// sourceable files, expanding directories recursively and filtering by
+/// extension / `.off`.
+pub fn resolve_specs(modules_root: &Path, config: &Config, specs: &[String]) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for spec in specs {
-        let target = root.join(spec);
+        let target = modules_root.join(spec);
         out.extend(discover::collect_enabled(&target, &config.settings));
     }
     out
@@ -47,10 +48,10 @@ pub fn resolve_specs(root: &Path, config: &Config, specs: &[String]) -> Vec<Path
 /// Resolve specs for `source --force`: include every regular file (any
 /// extension, including `.off`), expanding directories recursively. Replaces
 /// the old `modl -f` / `_modl_force_source`.
-pub fn resolve_specs_force(root: &Path, specs: &[String]) -> Vec<PathBuf> {
+pub fn resolve_specs_force(modules_root: &Path, specs: &[String]) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for spec in specs {
-        let target = root.join(spec);
+        let target = modules_root.join(spec);
         if target.is_file() {
             out.push(target);
         } else if target.is_dir() {
@@ -74,18 +75,20 @@ pub fn resolve_specs_force(root: &Path, specs: &[String]) -> Vec<PathBuf> {
 
 /// Emit source lines for the full active environment: the `startup` paths
 /// followed by the active profile's modules. Shared by `init bash` and `reload`.
-pub fn startup_lines(root: &Path, config: &Config, active_profile: Option<&str>) -> String {
+/// `modules_root` is where module specs resolve from — `root` unless
+/// `settings.modules_root` points elsewhere.
+pub fn startup_lines(modules_root: &Path, config: &Config, active_profile: Option<&str>) -> String {
     let mut out = String::new();
     // startup paths (files + dirs), in list order
     out.push_str(&source_lines(&resolve_specs(
-        root,
+        modules_root,
         config,
         &config.settings.startup,
     )));
     // active profile
     if let Some(name) = active_profile {
         if let Ok(specs) = config.profile(name) {
-            out.push_str(&source_lines(&resolve_specs(root, config, specs)));
+            out.push_str(&source_lines(&resolve_specs(modules_root, config, specs)));
         }
     }
     out
@@ -93,14 +96,21 @@ pub fn startup_lines(root: &Path, config: &Config, active_profile: Option<&str>)
 
 /// Emit the `init bash` output: SHMOD_ROOT export, the shim function, and the
 /// startup sourcing of the `startup` paths + persisted profile modules.
-pub fn init_bash(root: &Path, config: &Config, active_profile: Option<&str>) -> String {
+/// `root` (the config root) is what's exported as `SHMOD_ROOT`; module specs
+/// resolve from `modules_root`, which may point elsewhere.
+pub fn init_bash(
+    root: &Path,
+    modules_root: &Path,
+    config: &Config,
+    active_profile: Option<&str>,
+) -> String {
     let mut out = String::new();
     let root_str = root.to_string_lossy();
 
     out.push_str(&format!("export SHMOD_ROOT={}\n", shell_quote(&root_str)));
     out.push_str(SHIM);
     out.push('\n');
-    out.push_str(&startup_lines(root, config, active_profile));
+    out.push_str(&startup_lines(modules_root, config, active_profile));
 
     out
 }

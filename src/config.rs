@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -28,6 +28,12 @@ pub struct Settings {
     /// profile. Order is list position; dirs expand via discovery.
     #[serde(default = "default_startup")]
     pub startup: Vec<String>,
+    /// Where module files (startup paths, profile specs) actually live, if
+    /// different from the config root where `shmod.yaml` sits. Supports `~`,
+    /// absolute paths, or paths relative to the config root. `None` keeps the
+    /// old behavior: modules live alongside `shmod.yaml`.
+    #[serde(default)]
+    pub modules_root: Option<String>,
 }
 
 fn default_extensions() -> Vec<String> {
@@ -52,6 +58,7 @@ impl Default for Settings {
             extensions: default_extensions(),
             off_extension: default_off_extension(),
             startup: default_startup(),
+            modules_root: None,
         }
     }
 }
@@ -80,5 +87,15 @@ impl Config {
             .get(name)
             .map(|v| v.as_slice())
             .with_context(|| format!("unknown profile \"{name}\""))
+    }
+
+    /// Resolve where module files actually live: `settings.modules_root`
+    /// (expanded for `~` and joined against `root` if relative), or `root`
+    /// itself when unset.
+    pub fn modules_root(&self, root: &Path) -> PathBuf {
+        match &self.settings.modules_root {
+            Some(p) => crate::root::expand_path(p, root),
+            None => root.to_path_buf(),
+        }
     }
 }
