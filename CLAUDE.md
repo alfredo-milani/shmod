@@ -26,7 +26,7 @@ Integration tests build the binary and invoke it as a subprocess against a temp 
 Thin `main.rs` → `lib.rs::run()` dispatches on the parsed `Command`. Each module owns one concern:
 
 - **`cli.rs`** — clap `Cli`/`Command` definitions. `split_paths` handles the legacy `a:b:c` colon-separated multi-path syntax.
-- **`root.rs`** — resolves the module tree root in precedence order: `--root` flag → `SHMOD_ROOT` env → XDG config dir (`$XDG_CONFIG_HOME/shmod`, only if it contains `shmod.yaml`) → `~/.local/shmod`.
+- **`root.rs`** — resolves the module tree root in precedence order: `--root` flag → `SHMOD_ROOT` env → XDG config dir (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`).
 - **`config.rs`** — deserializes `shmod.yaml` (`serde_yaml_ng`). A missing file yields defaults with no profiles, so a bare tree still works. Holds `settings` (extensions, off_extension, startup list) and `profiles` (name → list of paths).
 - **`discover.rs`** — recursive module-file collection via `walkdir`. Skips hidden entries (except the target root itself), classifies each file as enabled (extension in `settings.extensions`) or disabled (ends in `off_extension`, default `.off`). Sorted for stable output.
 - **`emit.rs`** — turns resolved paths into `source` lines and builds the `init bash` output (SHMOD_ROOT export + shim + startup sourcing). **`shell_quote` is security-critical**: it single-quotes every emitted path so metacharacters can't execute when the shim evals the output. The `SHIM` const lists exactly which subcommands get wrapped in `eval` (`init|use|source|reload|reset`) vs. run directly.
@@ -44,4 +44,4 @@ Thin `main.rs` → `lib.rs::run()` dispatches on the parsed `Command`. Each modu
 
 ## Context
 
-The bash predecessor still lives at `~/.local/shmod`... note: this IS that directory, now holding the Rust rewrite. `README.md` is the user-facing doc; `TODO.md` tracks unshipped ideas (secrets management, unload/teardown, sync-wave ordering) — treat those as not-yet-designed, not current behavior. `example/` is a runnable module tree for manual testing (`SHMOD_ROOT=example target/release/shmod ...`).
+This repo lives at `~/.local/shmod` (where the bash predecessor lived); it is the source checkout, not the resolved runtime root (which now defaults to `~/.config/shmod`). `README.md` is the user-facing doc; `TODO.md` tracks unshipped ideas (secrets management, unload/teardown, sync-wave ordering) — treat those as not-yet-designed, not current behavior. `example/` is a runnable module tree for manual testing (`SHMOD_ROOT=example target/release/shmod ...`).

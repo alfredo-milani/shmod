@@ -446,16 +446,16 @@ fn root_resolves_from_shmod_root_env() {
 }
 
 #[test]
-fn root_falls_back_to_home_local_shmod() {
-    // Build the module tree at $HOME/.local/shmod and point HOME at a fake home.
+fn root_falls_back_to_home_config_shmod() {
+    // With XDG_CONFIG_HOME unset, the default root is $HOME/.config/shmod.
     let home = tempfile::tempdir().unwrap();
-    let root = home.path().join(".local/shmod");
+    let root = home.path().join(".config/shmod");
     write(root.join(".core/environment.sh"), "export MOD=x\n");
     write(root.join("shmod.yaml"), CONFIG_NO_DEFAULT);
 
     let state = tempfile::tempdir().unwrap();
-    // cwd is an unrelated dir with no shmod.yaml upward, and SHMOD_ROOT is
-    // cleared by run_in, so resolution must reach the ~/.local/shmod fallback.
+    // cwd is an unrelated dir, SHMOD_ROOT and XDG_CONFIG_HOME are cleared by
+    // run_in, so resolution must reach the ~/.config/shmod default.
     let elsewhere = tempfile::tempdir().unwrap();
     let (ok, stdout, stderr) = run_in(
         elsewhere.path(),
@@ -465,9 +465,9 @@ fn root_falls_back_to_home_local_shmod() {
 
     assert!(
         ok,
-        "profiles should succeed via ~/.local/shmod fallback: {stderr}"
+        "profiles should succeed via ~/.config/shmod default: {stderr}"
     );
-    assert!(stdout.contains("k8s"), "fallback config not used: {stdout}");
+    assert!(stdout.contains("k8s"), "default config not used: {stdout}");
 }
 
 #[test]

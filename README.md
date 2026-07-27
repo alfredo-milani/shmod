@@ -24,8 +24,7 @@ stdout and a shell shim `eval`s them.
   `shmod check`).
 
 The tree root is resolved in this order: `--root` flag → `SHMOD_ROOT` → XDG
-config dir (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`) if it contains
-`shmod.yaml` → `~/.local/shmod`.
+config dir (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`).
 
 ## Install
 
@@ -126,8 +125,7 @@ See [example/README.md](example/README.md).
 
 - **Config (`shmod.yaml`)** lives at the module tree root — yours to edit and
   version-control. Resolved as `--root` → `SHMOD_ROOT` → XDG config dir
-  (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`) if it contains
-  `shmod.yaml` → `~/.local/shmod`.
+  (`$XDG_CONFIG_HOME/shmod`, default `~/.config/shmod`).
 - **State (active profile)** is written by the program on `use --save` and
   stored at `${XDG_STATE_HOME:-$HOME/.local/state}/shmod/active-profile`. It's a
   runtime selection, not configuration, so it stays out of your config and can

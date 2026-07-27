@@ -58,6 +58,3 @@ $RECYCLE.BIN/
 *.log
 *.tmp
 tmp/
-
-# Project level
-TODO.md
