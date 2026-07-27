@@ -76,20 +76,23 @@ settings:
   extensions: ["sh"]      # sourceable file extensions
   off_extension: "off"    # marker that disables a file
   startup:                # sourced by every new shell, in order
-    - ".core/environment.sh"
-    - ".core/alias.sh"
-    - ".core/function.sh"
-    - "preload"
+    - "core/environment.sh"
+    - "core/alias.sh"
+    - "core/function.sh"
+  # modules_root: "~/dotfiles/shmod"   # optional, see below
 
 # Committed default profile loaded by new shells (a user's `use --save`
 # overrides it). Omit for no default.
-default: git
+default: personal
 
 profiles:
-  k8s:   ["dev/kubernetes", "dev/helm", "dev/kind"]
-  infra: ["dev/terraform", "dev/openssl"]
-  git:   ["dev/git"]
+  # Context profiles: a shared base/ module + a per-context overlay, listed
+  # last so its exports/aliases win over the shared base.
+  work:     ["base/git", "contexts/work"]
+  personal: ["base/git", "contexts/personal"]
 ```
+
+This mirrors the runnable [example/](example/) tree.
 
 ### Contexts (work / personal)
 
