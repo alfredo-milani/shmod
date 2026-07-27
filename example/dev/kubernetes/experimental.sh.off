@@ -1,3 +1,0 @@
-# Disabled module (`.off`) — hard-skipped by discovery and `use`/`source`.
-# Rename to `experimental.sh` to enable, or load ad-hoc with `source --force`.
-alias kx='kubectl --context experimental'

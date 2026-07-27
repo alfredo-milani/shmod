@@ -4,19 +4,15 @@ settings:
   # Ordered list of paths (files or dirs) sourced at startup, before any
   # profile. Order = list position; dirs expand via discovery.
   startup:
-    - ".core/environment.sh"
-    - ".core/alias.sh"
-    - ".core/function.sh"
-    - "preload"
+    - "core/environment.sh"
+    - "core/alias.sh"
+    - "core/function.sh"
 
 # Committed default profile: new shells load this unless a user has
 # persisted their own via `shmod use <profile> --save`.
-default: git
+default: personal
 
 profiles:
-  k8s: ["dev/kubernetes", "dev/kind"]
-  infra: ["dev/terraform"]
-  git: ["base/git"]
   # Context profiles: a shared base/ module + a contexts/ overlay. The overlay
   # is listed last so its exports/aliases win over the shared base.
   work: ["base/git", "contexts/work"]
